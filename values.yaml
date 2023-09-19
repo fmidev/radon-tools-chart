@@ -1,0 +1,35 @@
+# Default values for radon-tools
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: quay.io/fmi/radon-tools
+  pullPolicy: Always
+  tag: "latest"
+
+tablesJob:
+  resources:
+    limits:
+      cpu: 1
+      memory: 512Mi
+    requests:
+      cpu: 1
+      memory: 512Mi
+  credentials:
+    name: s3-credentials
+  job:
+    restartPolicy: Never
+
+loadJob:
+  credentials:
+    name: s3-credentials
+  job:
+    restartPolicy: Never
+
+radon:
+  host: radon-hostname
+  port: 5432
+  credentials:
+    name: radon-credentials

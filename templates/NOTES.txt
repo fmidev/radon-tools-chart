@@ -1,0 +1,11 @@
+Created job templates:
+  * {{ .Release.Name }}-load-job-template
+  * {{ .Release.Name }}-tables-job-template
+
+Run it:
+
+oc delete job test-load --ignore-not-found
+oc process -p RUN_IDENTIFIER=test-load -p FILES="s3://bucket/file.grib" -p DRY_RUN=1 {{ .Release.Name }}-load-job-template | oc create -f -
+
+oc delete job test-tables --ignore-not-found
+oc process -p RUN_IDENTIFIER=test-tables -p ANALYSIS_TIME=20230914 -p DRY_RUN=1 {{ .Release.Name }}-tables-job-template | oc create -f -

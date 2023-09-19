@@ -1,0 +1,261 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name:  {{ .Release.Name }}-load-job-template
+  annotations:
+    description: Template to run load jobs
+objects:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: ${RUN_IDENTIFIER}
+  spec:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 0
+    template:
+      metadata:
+        name: {{ .Release.Name }}-load-job-template
+      spec:
+        successfulJobsHistoryLimit: 2
+        failedJobsHistoryLimit: 2
+        activeDeadlineSeconds: ${DEADLINE}
+        restartPolicy: {{ .Values.loadJob.job.restartPolicy }}
+        containers:
+        - command:
+          - sh
+          - -c
+          - |
+            set -uex
+
+            opts=""
+
+            test ${IN_PLACE_LOAD} -eq 1 && opts="$opts -I"
+            test ${NETCDF} -eq 1 && opts="$opts -n"
+            test ${GRIB} -eq 1 && opts="$opts -g"
+            test ${GEOTIFF} -eq 1 && opts="$opts -G"
+            test ${PRODUCER_ID} -gt 0 && opts="$opts -p ${PRODUCER_ID}"
+            test ${ANALYSIS_TIME} -gt 0 && opts="$opts -a ${ANALYSIS_TIME}"
+            test ${NUM_THREADS} -gt 0 && opts="$opts -j ${THREADS}"
+            test ${NO_SS_STATE_UPDATE} -eq 1 && opts="$opts -X"
+            test ${NO_DIRECTORY_STRUCTURE_CHECK} -eq 1 && opts="$opts --no-directory-structure-check"
+            test -n "${SMARTMET_SERVER_TABLE_NAME}" && opts="$opts --smartmet-server-table-name ${SMARTMET_SERVER_TABLE_NAME}"
+            test ${DRY_RUN} -eq 1 && opts="$opts --dry-run"
+            test ${WAIT_TIMEOUT} -gt 0 && opts="$opts --wait-timeout ${WAIT_TIMEOUT}"
+
+            grid_to_radon -v $opts ${FILES}
+
+          env:
+          - name: S3_HOSTNAME
+            value: ${S3_HOSTNAME}
+          {{ if .Values.loadJob.credentials.name }}
+          - name: S3_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: S3_ACCESS_KEY_ID
+                name: {{ .Values.tablesJob.credentials.name }}
+          - name: S3_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: S3_SECRET_ACCESS_KEY
+                name: {{ .Values.tablesJob.credentials.name }}
+          {{- end }}
+          - name: HOME
+            value: /tmp
+          - name: RADON_HOSTNAME
+            value: {{ .Values.radon.host }}
+          - name: RADON_PORT
+            value: {{ .Values.radon.port | default "5432" | quote }}
+          - name: RADON_DATABASENAME
+            value: {{ .Values.radon.databaseName | default "radon" | quote }}
+          - name: RADON_WETODB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: RADON_WETODB_PASSWORD
+                name: {{ .Values.radon.credentials.name  }}
+          name: load
+          image: {{ .Values.image.repository }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            limits:
+              cpu: ${CPU_LIMIT}
+              memory: ${MEMORY_LIMIT}
+            requests:
+              cpu: ${CPU_REQUEST}
+              memory: ${MEMORY_REQUEST}
+parameters:
+- description: Unique id for this run
+  name: RUN_IDENTIFIER
+  required: true
+- description: Files to load
+  name: FILES
+  required: true
+- description: In-place load
+  name: IN_PLACE_LOAD
+  value: "0"
+- description: Netcdf
+  name: NETCDF
+  value: "0"
+- description: Grib
+  name: GRIB
+  value: "0"
+- description: Geotiff
+  name: GEOTIFF
+  value: "0"
+- description: Producer id
+  name: PRODUCER_ID
+  value: "0"
+- description: Analysis time (YYYYMMDDHH24MI)
+  name: ANALYSIS_TIME
+  value: "0"
+- description: Number of threads to use
+  name: NUM_THREADS
+  value: "0"
+- description: No ss_state_update
+  name: NO_SS_STATE_UPDATE
+  value: "0"
+- description: No directory structure check
+  name: NO_DIRECTORY_STRUCTURE_CHECK
+  value: "1"
+- description: Smartmet server table name
+  name: SMARTMET_SERVER_TABLE_NAME
+  value: ""
+- description: Dry run (no changes made)
+  name: DRY_RUN
+  value: "0"
+- description: S3_HOSTNAME
+  name: S3_HOSTNAME
+  value: ""
+- description: Wait timeout
+  name: WAIT_TIMEOUT
+  value: "0"
+- description: Job deadline in seconds
+  name: DEADLINE
+  value: 1800
+- description: Job memory request
+  name: MEMORY_REQUEST
+  value: "512Mi"
+- description: Job memory limit
+  name: MEMORY_LIMIT
+  value: "1Gi"
+- description: Job CPU request
+  name: CPU_REQUEST
+  value: "2"
+- description: Job CPU limit
+  name: CPU_LIMIT
+  value: "2"
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name:  {{ .Release.Name }}-tables-job-template
+  annotations:
+    description: Template to run table metadata jobs
+objects:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: ${RUN_IDENTIFIER}
+  spec:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 0
+    template:
+      metadata:
+        name: {{ .Release.Name }}-tables-job-template
+      spec:
+        successfulJobsHistoryLimit: 2
+        failedJobsHistoryLimit: 2
+        activeDeadlineSeconds: ${DEADLINE}
+        restartPolicy: {{ .Values.tablesJob.job.restartPolicy }}
+        containers:
+        - command:
+          - sh
+          - -c
+          - |
+            set -uex
+
+            opts=""
+
+            test ${CLASS_ID} -gt 0 && opts="$opts -c ${CLASS_ID}"
+            test ${PRODUCER_ID} -gt 0 && opts="$opts -r ${PRODUCER_ID}"
+            test ${GEOMETRY_ID} -gt 0 && opts="$opts -g ${GEOMETRY_ID}"
+            test -n "${ANALYSIS_TIME}" && opts="$opts -d ${ANALYSIS_TIME}"
+            test ${DRY_RUN} -eq 1 && opts="$opts --dry-run"
+            test ${DROP} -eq 1 && opts="$opts --drop --unlink"
+            test -n "${S3_CREDENTIALS_FILE}" && opts="$opts --s3-credentials-file ${S3_CREDENTIALS_FILE}"
+            test -n "${SSL_MODE}" && opts="$opts --sslmode ${SSL_MODE}"
+
+            radon_tables.py $opts
+
+          env:
+          {{ if .Values.tablesJob.credentials.name }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: S3_ACCESS_KEY_ID
+                name: {{ .Values.tablesJob.credentials.name }}
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: S3_SECRET_ACCESS_KEY
+                name: {{ .Values.tablesJob.credentials.name }}
+          {{- end }}
+          - name: HOME
+            value: /tmp
+          - name: RADON_HOSTNAME
+            valueFrom:
+              secretKeyRef:
+                key: RADON_HOSTNAME
+                name: {{ .Values.radon.credentials.name  }}
+          - name: RADON_PORT
+            valueFrom:
+              secretKeyRef:
+                key: RADON_PORT
+                name: {{ .Values.radon.credentials.name  }}
+          - name: RADON_DATABASENAME
+            valueFrom:
+              secretKeyRef:
+                key: RADON_DATABASENAME
+                name: {{ .Values.radon.credentials.name  }}
+          - name: RADON_RADON_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: RADON_RADON_ADMIN_PASSWORD
+                name: {{ .Values.radon.credentials.name  }}
+          name: load
+          image: {{ .Values.image.repository }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+parameters:
+- description: Unique id for this run
+  name: RUN_IDENTIFIER
+  required: true
+- description: Producer id
+  name: PRODUCER_ID
+  value: "0"
+- description: Class id
+  name: CLASS_ID
+  value: "0"
+- description: Geometry id
+  name: GEOMETRY_ID
+  value: "0"
+- description: Analysis date (YYYYMMDD)
+  name: ANALYSIS_TIME
+  value: ""
+- description: Drop tables
+  name: DROP
+  value: "0"
+- description: File where S3 credentials are found
+  name: S3_CREDENTIALS_FILE
+  value: ""
+- description: Dry run (no changes made)
+  name: DRY_RUN
+  value: "0"
+- description: SSL mode
+  name: SSL_MODE
+  value: ""
+- description: Job deadline in seconds
+  name: DEADLINE
+  value: 900
