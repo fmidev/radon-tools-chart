@@ -19,7 +19,7 @@ objects:
       spec:
         successfulJobsHistoryLimit: 2
         failedJobsHistoryLimit: 2
-        activeDeadlineSeconds: ${DEADLINE}
+        activeDeadlineSeconds: {{ .Values.loadJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.loadJob.job.restartPolicy }}
         containers:
         - command:
@@ -129,9 +129,6 @@ parameters:
 - description: Wait timeout
   name: WAIT_TIMEOUT
   value: "0"
-- description: Job deadline in seconds
-  name: DEADLINE
-  value: 1800
 - description: Job memory request
   name: MEMORY_REQUEST
   value: "512Mi"
@@ -166,7 +163,7 @@ objects:
       spec:
         successfulJobsHistoryLimit: 2
         failedJobsHistoryLimit: 2
-        activeDeadlineSeconds: ${DEADLINE}
+        activeDeadlineSeconds: {{ .Values.tablesJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.tablesJob.job.restartPolicy }}
         containers:
         - command:
@@ -256,6 +253,3 @@ parameters:
 - description: SSL mode
   name: SSL_MODE
   value: ""
-- description: Job deadline in seconds
-  name: DEADLINE
-  value: 900

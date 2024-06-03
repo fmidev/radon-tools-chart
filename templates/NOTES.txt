@@ -8,4 +8,5 @@ oc delete job test-load --ignore-not-found
 oc process -p RUN_IDENTIFIER=test-load -p FILES="s3://bucket/file.grib" -p DRY_RUN=1 {{ .Release.Name }}-load-job-template | oc create -f -
 
 oc delete job test-tables --ignore-not-found
-oc process -p RUN_IDENTIFIER=test-tables -p ANALYSIS_TIME=20230914 -p DRY_RUN=1 {{ .Release.Name }}-tables-job-template | oc create -f -
+tomorrow=$(date +%Y%m%d -d tomorrow)
+oc process -p CLASS_ID=1 -p RUN_IDENTIFIER=test-tables -p ANALYSIS_TIME=$tomorrow -p DRY_RUN=1 {{ .Release.Name }}-tables-job-template | oc create -f -

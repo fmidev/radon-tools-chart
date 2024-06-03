@@ -21,15 +21,17 @@ tablesJob:
     name: s3-credentials
   job:
     restartPolicy: Never
+    activeDeadlineSeconds: 900
 
 loadJob:
   credentials:
     name: s3-credentials
   job:
     restartPolicy: Never
+    activeDeadlineSeconds: 1800
 
 radon:
-  host: radon-hostname
+  host: radondb.radondb
   port: 5432
   credentials:
     name: radon-credentials
