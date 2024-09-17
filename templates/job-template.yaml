@@ -17,8 +17,6 @@ objects:
       metadata:
         name: {{ .Release.Name }}-load-job-template
       spec:
-        successfulJobsHistoryLimit: 2
-        failedJobsHistoryLimit: 2
         activeDeadlineSeconds: {{ .Values.loadJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.loadJob.job.restartPolicy }}
         containers:
@@ -48,17 +46,17 @@ objects:
           env:
           - name: S3_HOSTNAME
             value: ${S3_HOSTNAME}
-          {{ if .Values.loadJob.credentials.name }}
+          {{ if .Values.s3.credentials.name }}
           - name: S3_ACCESS_KEY_ID
             valueFrom:
               secretKeyRef:
                 key: S3_ACCESS_KEY_ID
-                name: {{ .Values.tablesJob.credentials.name }}
+                name: {{ .Values.s3.credentials.name }}
           - name: S3_SECRET_ACCESS_KEY
             valueFrom:
               secretKeyRef:
                 key: S3_SECRET_ACCESS_KEY
-                name: {{ .Values.tablesJob.credentials.name }}
+                name: {{ .Values.s3.credentials.name }}
           {{- end }}
           - name: HOME
             value: /tmp
@@ -161,8 +159,6 @@ objects:
       metadata:
         name: {{ .Release.Name }}-tables-job-template
       spec:
-        successfulJobsHistoryLimit: 2
-        failedJobsHistoryLimit: 2
         activeDeadlineSeconds: {{ .Values.tablesJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.tablesJob.job.restartPolicy }}
         containers:
@@ -186,35 +182,26 @@ objects:
             radon_tables.py $opts
 
           env:
-          {{ if .Values.tablesJob.credentials.name }}
+          {{ if .Values.s3.credentials.name }}
           - name: AWS_ACCESS_KEY_ID
             valueFrom:
               secretKeyRef:
                 key: S3_ACCESS_KEY_ID
-                name: {{ .Values.tablesJob.credentials.name }}
+                name: {{ .Values.s3.credentials.name }}
           - name: AWS_SECRET_ACCESS_KEY
             valueFrom:
               secretKeyRef:
                 key: S3_SECRET_ACCESS_KEY
-                name: {{ .Values.tablesJob.credentials.name }}
+                name: {{ .Values.s3.credentials.name }}
           {{- end }}
           - name: HOME
             value: /tmp
           - name: RADON_HOSTNAME
-            valueFrom:
-              secretKeyRef:
-                key: RADON_HOSTNAME
-                name: {{ .Values.radon.credentials.name  }}
+            value: {{ .Values.radon.host }}
           - name: RADON_PORT
-            valueFrom:
-              secretKeyRef:
-                key: RADON_PORT
-                name: {{ .Values.radon.credentials.name  }}
+            value: {{ .Values.radon.port | quote }}
           - name: RADON_DATABASENAME
-            valueFrom:
-              secretKeyRef:
-                key: RADON_DATABASENAME
-                name: {{ .Values.radon.credentials.name  }}
+            value: {{ .Values.radon.name }}
           - name: RADON_RADON_ADMIN_PASSWORD
             valueFrom:
               secretKeyRef:
@@ -225,6 +212,19 @@ objects:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{ if eq .Values.cloud "aws" -}}
+          volumeMounts:
+          - name: secrets-store-inline
+            mountPath: {{ .Values.s3.credentials.storePath }}
+            readOnly: true
+        volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Release.Name }}-secrets
+        {{- end }}
 parameters:
 - description: Unique id for this run
   name: RUN_IDENTIFIER

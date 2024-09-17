@@ -1,6 +1,9 @@
 # Default values for radon-tools
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+#
+
+cloud: aws
 
 replicaCount: 1
 
@@ -17,21 +20,23 @@ tablesJob:
     requests:
       cpu: 1
       memory: 512Mi
-  credentials:
-    name: s3-credentials
   job:
     restartPolicy: Never
     activeDeadlineSeconds: 900
 
 loadJob:
-  credentials:
-    name: s3-credentials
   job:
     restartPolicy: Never
     activeDeadlineSeconds: 1800
 
+s3:
+  credentials:
+    name: s3-smartmet-writer-env
+    storePath: /mnt/secretstore
+
 radon:
   host: radondb.radondb
   port: 5432
+  name: radon
   credentials:
-    name: radon-credentials
+    name: radon-passwords
