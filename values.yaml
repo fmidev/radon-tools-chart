@@ -39,4 +39,4 @@ radon:
   port: 5432
   name: radon
   credentials:
-    name: radon-passwords
+    name: radon-credentials
