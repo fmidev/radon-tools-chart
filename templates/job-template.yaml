@@ -1,7 +1,7 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name:  {{ .Release.Name }}-load-job-template
+  name:  {{ .Release.Name }}-load
   annotations:
     description: Template to run load jobs
 objects:
@@ -15,7 +15,7 @@ objects:
     backoffLimit: 0
     template:
       metadata:
-        name: {{ .Release.Name }}-load-job-template
+        name: {{ .Release.Name }}-load
       spec:
         activeDeadlineSeconds: {{ .Values.loadJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.loadJob.job.restartPolicy }}
@@ -143,7 +143,7 @@ parameters:
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name:  {{ .Release.Name }}-tables-job-template
+  name:  {{ .Release.Name }}-tables
   annotations:
     description: Template to run table metadata jobs
 objects:
@@ -157,7 +157,7 @@ objects:
     backoffLimit: 0
     template:
       metadata:
-        name: {{ .Release.Name }}-tables-job-template
+        name: {{ .Release.Name }}-tables
       spec:
         activeDeadlineSeconds: {{ .Values.tablesJob.job.activeDeadlineSeconds }}
         restartPolicy: {{ .Values.tablesJob.job.restartPolicy }}
